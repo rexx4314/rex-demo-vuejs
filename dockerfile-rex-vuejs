@@ -1,0 +1,39 @@
+# 1. Vue.js 3.0 및 Vue CLI가 설치된 베이스 이미지 사용
+FROM rexx4314/node-16-vue-quasar:1.0 AS build-stage
+
+# 2. 작업 디렉토리 설정
+WORKDIR /app
+
+# 3. package.json 경로를 변수로 처리
+ARG PACKAGE_PATH=.
+
+# 4. package.json 및 package-lock.json 파일 복사
+COPY ${PACKAGE_PATH}/package*.json /app/
+
+# 5. 의존성 설치 후 캐시 정리
+RUN npm install && npm cache clean --force
+
+# 6. 나머지 소스 파일 복사
+COPY ${PACKAGE_PATH}/ /app/
+
+# 7. 빌드 수행 (Vue.js 또는 Quasar)
+RUN npm run build
+
+# 8. Nginx 설정을 사용하는 프로덕션 이미지
+FROM rexx4314/nginx:1.0 AS production
+
+# 9. 커스텀 Nginx 설정 파일 복사
+#COPY custom-nginx.conf /etc/nginx/conf.d/
+
+# 10. Nginx 기본 웹사이트 파일 제거
+RUN rm -rf /usr/share/nginx/html/*
+
+# 11. 빌드된 파일을 Nginx의 웹 루트로 복사
+COPY --from=build-stage /app/dist /usr/share/nginx/html
+
+# 12. Nginx 실행
+CMD ["nginx", "-g", "daemon off;"]
+
+# 13. 포트 노출
+EXPOSE 80
+
